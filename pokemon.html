@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>GeeksterPok</title>
+    <link rel="stylesheet" href="pokemon.css">
+</head>
+<body>
+    <h1>GeeksterPok</h1>
+    <form id="pokemon-search">
+
+        <select name="type" id="type" >
+            <option value="Types">Types</option>
+            <option value="grass">grass</option>
+            <option value="fire">fire</option>
+            <option value="water">water</option>
+            <option value="bug">bug</option>
+            <option value="normal">normal</option>
+            <option value="poison">poison</option>
+            <option value="electric">electric</option>
+            <option value="ground">ground</option>
+            <option value="fairy">fairy</option>
+            <option value="fighting">fighting</option>
+            <option value="psychic">psychic</option>
+            <option value="rock">rock</option>
+            <option value="Ghost">Ghost</option>
+            <option value="ice">ice</option>
+            <option value="dragon">dragon</option>
+        </select>
+        <button id="filterBtn">Filter by Type</button>
+        <button id="resetBtn">Reset</button>
+    </form>
+    <form id="form-search">
+        <input id="pokemon-search-input" type="text" name="" placeholder="Enter Pokémon Name">
+    </form>
+    <section id="Pokedex"></section>
+    <script>
+const typeSelect = document.getElementById('type');
+const pokemonList = document.getElementById('Pokedex');
+const searchInput = document.getElementById('pokemon-search-input');
+const formSearch = document.getElementById('pokemon-search');
+const filterBtn = document.getElementById('filterBtn');
+const resetBtn = document.getElementById('resetBtn');
+
+let pokemonArray = [];
+let uniqueTypes = new Set();
+
+const limit = 151; 
+let offset = 0; 
+
+window.addEventListener("load", async () =>{
+    await getDataFromAPI();
+});
+
+async function getDataFromAPI() {
+    try {
+        const response = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${offset}`);
+        const data = await response.json();
+        const pokemonURLs = data.results.map(result => result.url);
+        const pokemonData = await Promise.all(pokemonURLs.map(url => fetch(url).then(response => response.json())));
+
+        pokemonArray = pokemonData.map(pokemon => ({
+            frontImage: pokemon.sprites.front_default,
+            pokemon_id: pokemon.id,
+            name: pokemon.name,
+            type: pokemon.types[0].type.name
+        }));
+
+        displayPokemon(pokemonArray);
+        generateTypes();
+    } catch (error) {
+        console.error('Error fetching Pokemon:', error);
+    }
+}
+
+formSearch.addEventListener('submit', function(event) {
+    event.preventDefault();
+    const selectedType = typeSelect.value.toLowerCase();
+    const searchValue = searchInput.value.toLowerCase();
+    const filteredPokemon = pokemonArray.filter(pokemon => 
+        (selectedType === 'types' || pokemon.type === selectedType) && pokemon.name.includes(searchValue)
+    );
+    displayPokemon(filteredPokemon);
+});
+
+filterBtn.addEventListener('click', function() {
+    formSearch.dispatchEvent(new Event('submit'));
+});
+
+resetBtn.addEventListener('click', function() {
+    formSearch.reset();
+    displayPokemon(pokemonArray);
+});
+
+function displayPokemon(pokemons) {
+    pokemonList.innerHTML = '';
+    pokemons.forEach(pokemon => {
+        createPokemonCard(pokemon);
+    });
+}
+
+function createPokemonCard(pokemon) {
+    const flipCard = document.createElement("div");
+    flipCard.classList.add("flip-card");
+    
+    const flipCardInner = document.createElement("div");
+    flipCardInner.classList.add("flip-card-inner");
+    flipCardInner.id = `${pokemon.type}`
+    flipCard.append(flipCardInner)
+    
+    const frontCard = document.createElement("div");
+    frontCard.classList.add('front-pokemon-card');
+    frontCard.innerHTML = `
+        <img src="${pokemon.frontImage}" class="front-pokemon-image">
+        <h2><a href="/pokemon.html?pokemon_id=${pokemon.pokemon_id}">${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</a></h2>
+        <p class="front-poke-id">#${pokemon.pokemon_id}</p>
+        <p class="front-pokemon-type">${pokemon.type.toUpperCase()}</p>
+    `;
+    
+    flipCardInner.appendChild(frontCard);
+    flipCard.appendChild(flipCardInner);
+    pokemonList.appendChild(flipCard);
+    
+    uniqueTypes.add(pokemon.type);
+    const backCard = document.createElement("div")
+    backCard.classList.add('back-pokemon-card')
+    frontCard.innerHTML = `
+        <img src="${pokemon.frontImage}" class="front-pokemon-image">
+        <h2><a href="/pokemon.html?pokemon_id=${pokemon.pokemon_id}">${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</a></h2>
+        <p class="front-poke-id">#${pokemon.pokemon_id}</p>
+        <p class="front-pokemon-type">${pokemon.type.toUpperCase()}</p>
+    `;
+    const backImage = document.createElement('img')
+    backImage.src = `${pokemon.frontImage}`
+    backImage.classList.add("back-pokemon-image")
+
+    const backPokeID = document.createElement('p')
+    backPokeID.textContent = `#${pokemon.pokemon_id}`
+    backPokeID.classList.add("back-poke-id")
+
+    const backPokeName = document.createElement('h2')
+    backPokeName.innerHTML = `<a href="/pokemon.html?pokemon_id=${pokemon.pokemon_id}">${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</a>`
+    backPokeName.classList.add("back-pokemon-name")
+
+    const backPokeAbilities = document.createElement("p")
+    backPokeAbilities.innerHTML = `<p>Abilities:<br>${pokemon.abilities}<p>`
+    backPokeAbilities.classList.add("back-pokemon-abilities")
+
+    backCard.append(backImage, backPokeID, backPokeName, backPokeAbilities);
+    flipCardInner.appendChild(backCard);
+    uniqueTypes.add(pokemon.type);
+}
+
+function generateTypes() {
+    uniqueTypes.forEach(type => {
+        const typeOption = document.createElement('option');
+        typeOption.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+        typeOption.value = type;
+        typeSelect.appendChild(typeOption);
+    });
+}
+    </script>
+</body>
+</html>
